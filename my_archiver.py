@@ -3,7 +3,7 @@ from interaction import writing_data_double_mode
 
 
 class Coder:
-    def __init__(self, input_file='input', output_file='output_file', algorithm=True, length_bit_sequence=8):
+    def __init__(self, input_file='input', output_file='output_file', algorithm=False, length_bit_sequence=8):
         self.input_file = input_file
         self.output_file = output_file
         self.algorithm = algorithm
@@ -52,8 +52,39 @@ class Coder:
             self.table_coding[array[1]] = string + '1'
         del array
 
-    def algorithm_f(self):
-        pass
+    def algorithm_f(self, table_frequency):
+        work_list = list(map(lambda x: [x, table_frequency.get(x) / len(self.source_content)], table_frequency.keys()))
+        self.recurrent_part_algorithm_f(work_list)
+        print(self.table_coding)
+
+    def recurrent_part_algorithm_f(self, array, string=''):
+        if len(array) == 1:
+            self.table_coding[array[0][0]] = string
+            return
+
+        array.sort(key=lambda x: -x[1])
+        array_first = []
+        array_second = []
+        first_ = 0
+        second_ = 0
+        while len(array) > 0:
+            element = array.pop(0)
+
+            if first_ > second_ or first_ == second_ and len(array_first) > len(array_second):
+                second_ += element[1]
+                array_second.append(element)
+
+            else:
+                first_ += element[1]
+                array_first.append(element)
+
+        self.recurrent_part_algorithm_f(array_first, string + '0')
+        self.recurrent_part_algorithm_f(array_second, string + '1')
+        del array_first
+        del array_second
+        del first_
+        del second_
+        del array
 
     def writing_data_to_file(self):
         result_string = ''
@@ -79,6 +110,7 @@ class Coder:
             result_string += self.table_coding[element]
 
         addiction_number = 8 - len(result_string) % 8
+
         if len(result_string) % 8 != 0:
             addiction_number = 8 - len(result_string) % 8
             for i in range(8 - len(result_string) % 8):
@@ -93,7 +125,8 @@ class Coder:
             self.algorithm_h(data)
             del data
         else:
-            self.algorithm_f()
+            self.algorithm_f(data)
+            del data
         self.writing_data_to_file()
 
 
@@ -117,7 +150,7 @@ class Decoder:
         len_of_seq = current_data[3]
         added_nulls = current_data[-1]
         head_and_data = ''.join(map(lambda x: '0' * (8 - len(bin(x)[2:])) + bin(x)[2:], current_data[4:-1]))
-        if added_nulls != 0:
+        if added_nulls != 0 and added_nulls != 8:
             head_and_data = head_and_data[:-added_nulls]
 
         for i in range(number_of_cells):
@@ -152,7 +185,18 @@ class Decoder:
 
 
 if __name__ == "__main__":
-    coder = Coder()
+    input_file = input('Введите название входного файла: ')
+    output_file = input('Введите название сжатного файла: ')
+    source_file = input('Введите название разсжатого файла: ')
+    algorithm = input('Введите название алгоритма "ФАНО"/"Хаффман": ')
+    length_bit_sequence = int(input('Длина битной последовательности: '))
+    if algorithm == 'ФАНО':
+        algorithm = False
+    else:
+        algorithm = True
+
+    coder = Coder(input_file=input_file, output_file=output_file, algorithm=algorithm,
+                  length_bit_sequence=length_bit_sequence)
     coder.start()
-    decoder = Decoder()
+    decoder = Decoder(archived_file=output_file, source_file=source_file)
     decoder.start()
